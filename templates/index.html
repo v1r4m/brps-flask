@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundCloud Shuffle Player</title>
+    <script src="https://w.soundcloud.com/player/api.js"></script>
+    <script>
+        let tracks = [];
+        let currentTrackIndex = 0;
+        let widget; // SoundCloud 위젯 객체
+        let started = false; // 최초 실행 체크
+
+        async function fetchTracks() {
+            const playlistId = "{{ playlist_id }}"; // 사용자의 플레이리스트 ID
+            const response = await fetch(`/playlist/${playlistId}`);
+            tracks = await response.json();
+            currentTrackIndex = 0;
+            playTrack();
+        }
+
+        function startPlayback() {
+            if (!started) {
+                started = true; // 첫 실행 완료
+                playTrack(); // 재생 시작
+            }
+        }
+
+        function playTrack() {
+            if (tracks.length === 0) return;
+
+            let trackUrl = `https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/${tracks[currentTrackIndex].id}`;
+            let player = document.getElementById("player");
+            player.src = trackUrl;
+
+            // 위젯 API로 iframe을 제어
+            player.onload = function() {
+                widget = SC.Widget(player);
+
+                // 자동 재생 시도 (일정 시간 후 실행)
+                setTimeout(() => {
+                    widget.getCurrentSound(function(sound) {
+                        console.log(sound);
+                        if (sound) {
+                            widget.play(); // 강제 재생
+                        }
+                    });
+                }, 5000);
+
+                widget.bind(SC.Widget.Events.FINISH, function() {
+                    nextTrack();
+                });
+            };
+
+            currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
+        }
+
+        function nextTrack() {
+            playTrack();
+        }
+
+        window.onload = fetchTracks;
+    </script>
+</head>
+<body>
+    <h1>SoundCloud Shuffle Player</h1>
+    <button onclick="startPlayback()">Start Playing</button>
+    <iframe id="player" width="100%" height="166" frameborder="no" allow="autoplay"></iframe>
+</body>
+</html>
