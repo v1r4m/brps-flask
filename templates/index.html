@@ -8,11 +8,11 @@
     <script>
         let tracks = [];
         let currentTrackIndex = 0;
-        let widget; // SoundCloud 위젯 객체
-        let started = false; // 최초 실행 체크
+        let widget;
+        let started = false;
 
         async function fetchTracks() {
-            const playlistId = "{{ playlist_id }}"; // 사용자의 플레이리스트 ID
+            const playlistId = "{{ playlist_id }}"; 
             const response = await fetch(`/playlist/${playlistId}`);
             tracks = await response.json();
             currentTrackIndex = 0;
@@ -21,8 +21,8 @@
 
         function startPlayback() {
             if (!started) {
-                started = true; // 첫 실행 완료
-                playTrack(); // 재생 시작
+                started = true;
+                playTrack();
             }
         }
 
@@ -33,29 +33,28 @@
             let player = document.getElementById("player");
             player.src = trackUrl;
 
-            // 위젯 API로 iframe을 제어
             player.onload = function() {
                 widget = SC.Widget(player);
 
-                // 자동 재생 시도 (일정 시간 후 실행)
                 setTimeout(() => {
                     widget.getCurrentSound(function(sound) {
-                        console.log(sound);
                         if (sound) {
-                            widget.play(); // 강제 재생
+                            widget.play();
                         }
                     });
-                }, 5000);
+                }, 2000);
 
+                // 기존 바인딩을 해제하고 다시 바인딩 (중복 바인딩 방지)
+                widget.unbind(SC.Widget.Events.FINISH);
                 widget.bind(SC.Widget.Events.FINISH, function() {
+                    console.log('call, nextTrack!');
                     nextTrack();
                 });
             };
-
-            currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
         }
 
         function nextTrack() {
+            currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
             playTrack();
         }
 
