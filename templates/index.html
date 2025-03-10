@@ -42,7 +42,20 @@
             let trackDuration = track.duration / 1000; // SoundCloud API는 ms 단위로 줌
             console.log(`Track Duration: ${trackDuration} seconds`);
 
-            setTimeout(nextTrack, trackDuration * 1000); // 트랙 길이만큼 기다렸다가 다음 곡 재생
+            setTimeout(() => {
+                console.log("Next track will be played.");
+                nextTrack();
+            }, trackDuration*1000);
+            //while waiting, console log left time
+            let leftTime = trackDuration;
+            let interval = setInterval(() => {
+                leftTime -= 1;
+                console.log(`Left Time: ${leftTime} seconds`);
+                if (leftTime <= 0) {
+                    clearInterval(interval);
+                }
+            }, 1000);
+
         }
 
         function nextTrack() {
