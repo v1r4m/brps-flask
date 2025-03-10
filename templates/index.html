@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundCloud Shuffle Player</title>
-    <script src="https://w.soundcloud.com/player/api.js"></script>
     <script>
         let tracks = [];
         let currentTrackIndex = 0;
-        let widget;
         let started = false;
 
         async function fetchTracks() {
@@ -16,45 +14,40 @@
             const response = await fetch(`/playlist/${playlistId}`);
             tracks = await response.json();
             currentTrackIndex = 0;
-            playTrack();
+
+            console.log("Fetched Tracks:", tracks);
         }
 
         function startPlayback() {
-            if (!started) {
+            if (!started && tracks.length > 0) {
                 started = true;
                 playTrack();
             }
         }
 
         function playTrack() {
-            if (tracks.length === 0) return;
+            if (tracks.length === 0) {
+                console.log("No tracks available.");
+                return;
+            }
 
-            let trackUrl = `https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/${tracks[currentTrackIndex].id}`;
+            let track = tracks[currentTrackIndex];
+            let trackUrl = `https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/${track.id}&auto_play=true`;
             let player = document.getElementById("player");
             player.src = trackUrl;
 
-            player.onload = function() {
-                widget = SC.Widget(player);
+            console.log(`Playing Track: ${trackUrl}`);
 
-                setTimeout(() => {
-                    widget.getCurrentSound(function(sound) {
-                        if (sound) {
-                            widget.play();
-                        }
-                    });
-                }, 2000);
+            // 트랙 길이(초 단위)를 가져와서 자동으로 다음 트랙을 재생
+            let trackDuration = track.duration / 1000; // SoundCloud API는 ms 단위로 줌
+            console.log(`Track Duration: ${trackDuration} seconds`);
 
-                // 기존 바인딩을 해제하고 다시 바인딩 (중복 바인딩 방지)
-                widget.unbind(SC.Widget.Events.FINISH);
-                widget.bind(SC.Widget.Events.FINISH, function() {
-                    console.log('call, nextTrack!');
-                    nextTrack();
-                });
-            };
+            setTimeout(nextTrack, trackDuration * 1000); // 트랙 길이만큼 기다렸다가 다음 곡 재생
         }
 
         function nextTrack() {
             currentTrackIndex = (currentTrackIndex + 1) % tracks.length;
+            console.log("Next track index:", currentTrackIndex);
             playTrack();
         }
 
