@@ -4,25 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundCloud Shuffle Player</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
     <script>
         let tracks = [];
         let currentTrackIndex = 0;
-        let started = false;
+        let player = null;
 
         async function fetchTracks() {
             const playlistId = "{{ playlist_id }}"; 
             const response = await fetch(`/playlist/${playlistId}`);
             tracks = await response.json();
-            currentTrackIndex = 0;
-
             console.log("Fetched Tracks:", tracks);
-        }
-
-        function startPlayback() {
-            if (!started && tracks.length > 0) {
-                started = true;
-                playTrack();
-            }
         }
 
         function playTrack() {
@@ -32,30 +24,25 @@
             }
 
             let track = tracks[currentTrackIndex];
-            let trackUrl = `https://w.soundcloud.com/player/?url=https://api.soundcloud.com/tracks/${track.id}&auto_play=true`;
-            let player = document.getElementById("player");
-            player.src = trackUrl;
+            let streamUrl = `/stream/${track.id}`; // 🔥 Flask에서 MP3 Blob을 제공
 
-            console.log(`Playing Track: ${trackUrl}`);
+            console.log(`Playing Track: ${track.title}`);
 
-            // 트랙 길이(초 단위)를 가져와서 자동으로 다음 트랙을 재생
-            let trackDuration = track.duration / 1000; // SoundCloud API는 ms 단위로 줌
-            console.log(`Track Duration: ${trackDuration} seconds`);
+            if (player) {
+                player.stop();
+            }
 
-            setTimeout(() => {
-                console.log("Next track will be played.");
-                nextTrack();
-            }, trackDuration*1000);
-            //while waiting, console log left time
-            let leftTime = trackDuration;
-            let interval = setInterval(() => {
-                leftTime -= 1;
-                console.log(`Left Time: ${leftTime} seconds`);
-                if (leftTime <= 0) {
-                    clearInterval(interval);
+            player = new Howl({
+                src: [streamUrl],
+                format: ['mp3'],  // ✅ 확장자 명시 (Howler.js가 파일 타입을 정확히 인식하도록)
+                html5: true, // ✅ 백그라운드에서도 자동 재생 가능
+                autoplay: true,
+                volume: 1.0,
+                onend: function () {
+                    console.log(`Finished: ${track.title}`);
+                    nextTrack();
                 }
-            }, 1000);
-
+            });
         }
 
         function nextTrack() {
@@ -64,12 +51,14 @@
             playTrack();
         }
 
-        window.onload = fetchTracks;
+        window.onload = async () => {
+            await fetchTracks();
+            playTrack();
+        };
     </script>
 </head>
 <body>
-    <h1>SoundCloud Shuffle Player</h1>
-    <button onclick="startPlayback()">Start Playing</button>
-    <iframe id="player" width="100%" height="166" frameborder="no" allow="autoplay"></iframe>
+    <h1>SoundCloud Shuffle Player (Flask + Howler.js)</h1>
+    <button onclick="playTrack()">Start Playing</button>
 </body>
 </html>
