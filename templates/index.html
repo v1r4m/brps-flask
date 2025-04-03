@@ -5,26 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SoundCloud Shuffle Player</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+    <style>
+        #loading {
+            display: none;
+            font-size: 1.2em;
+            color: #555;
+            margin: 20px 0;
+        }
+    </style>
     <script>
         let tracks = [];
         let currentTrackIndex = 0;
         let player = null;
+        let playlistLoaded = false;
 
         async function fetchTracks() {
             const playlistId = "{{ playlist_id }}"; 
+            document.getElementById("loading").style.display = "block";
             const response = await fetch(`/playlist/${playlistId}`);
             tracks = await response.json();
+            playlistLoaded = true;
+            document.getElementById("loading").style.display = "none";
             console.log("Fetched Tracks:", tracks);
         }
 
         function playTrack() {
-            if (tracks.length === 0) {
-                console.log("No tracks available.");
+            if (!playlistLoaded || tracks.length === 0) {
+                console.log("Tracks not ready.");
                 return;
             }
 
+            document.getElementById("loading").style.display = "block";
+
             let track = tracks[currentTrackIndex];
-            let streamUrl = `/stream/${track.id}`; // 🔥 Flask에서 MP3 Blob을 제공
+            let streamUrl = `/stream/${track.id}`;
 
             console.log(`Playing Track: ${track.title}`);
 
@@ -34,13 +48,24 @@
 
             player = new Howl({
                 src: [streamUrl],
-                format: ['mp3'],  // ✅ 확장자 명시 (Howler.js가 파일 타입을 정확히 인식하도록)
-                html5: true, // ✅ 백그라운드에서도 자동 재생 가능
+                format: ['mp3'],
+                html5: true,
                 autoplay: true,
                 volume: 1.0,
+                onplay: function () {
+                    document.getElementById("loading").style.display = "none";
+                },
                 onend: function () {
                     console.log(`Finished: ${track.title}`);
                     nextTrack();
+                },
+                onloaderror: function (id, err) {
+                    console.error("Load Error:", err);
+                    document.getElementById("loading").style.display = "none";
+                },
+                onplayerror: function (id, err) {
+                    console.error("Play Error:", err);
+                    document.getElementById("loading").style.display = "none";
                 }
             });
         }
@@ -51,14 +76,15 @@
             playTrack();
         }
 
-        window.onload = async () => {
+        async function initPlayer() {
             await fetchTracks();
             playTrack();
-        };
+        }
     </script>
 </head>
 <body>
     <h1>SoundCloud Shuffle Player (Flask + Howler.js)</h1>
-    <button onclick="playTrack()">Start Playing</button>
+    <div id="loading">🎵 Loading...</div>
+    <button onclick="initPlayer()">Start Playing</button>
 </body>
 </html>
