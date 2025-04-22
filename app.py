@@ -44,6 +44,30 @@ def get_shuffled_tracks(playlist_id):
 def home():
     return render_template('index.html', playlist_id=PLAYLIST_ID)
 
+@app.route('/track/<track_id>', methods=['GET'])
+def get_track_title(track_id):
+    """ track id로 title만 반환하는 API """
+    track_url = f"https://api-v2.soundcloud.com/tracks/{track_id}?client_id={CLIENT_ID}"
+    headers = {'Authorization': AUTH}
+    for i in range(10):
+        time.sleep(1)
+        track_response = requests.get(track_url, headers=headers)
+        if track_response.status_code == 200:
+            break
+    else:
+        print(f"❌ 트랙 정보 가져오기 실패: {track_response.text}")
+        return jsonify({"error": "Failed to fetch track metadata"}), 500
+
+    track_data = track_response.json()
+    return jsonify({
+        "title": track_data.get("title", "Unknown Title"),
+        "artist": track_data.get("user", {}).get("username", "Unknown Artist"),
+        "artwork_url": track_data.get("artwork_url", ""),
+        "duration": track_data.get("duration", 0) / 1000,  # Duration in seconds
+        "playback_count": track_data.get("playback_count", 0),
+        "likes_count": track_data.get("likes_count", 0)
+    })
+
 @app.route('/playlist/<playlist_id>', methods=['GET'])
 def get_playlist(playlist_id):
     tracks = get_shuffled_tracks(playlist_id)
