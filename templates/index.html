@@ -69,7 +69,12 @@
     }
 
     function handlePlayClick() {
-    initPlayer();
+      if (!playlistLoaded) {
+            initPlayer();  // 플레이리스트가 아직 로드되지 않았다면 클릭 시 플레이리스트 로딩
+        } else {
+            playTrack();  // 이미 로드된 플레이리스트가 있다면 바로 재생
+        }
+
     
         const btn = document.getElementById('playButton');
         btn.classList.add('glow-on-click');
