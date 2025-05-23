@@ -21,3 +21,11 @@ pip install -r requirements.txt
 python app.py
 ```
 * It will be served on `localhost:5001`.
+
+### on docker
+```
+docker build -t brps-flask .
+docker run -p 5001:5000 brps-flask
+```
+
+* It will be served on `localhost:5001`.
