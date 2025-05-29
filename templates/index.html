@@ -109,6 +109,8 @@
 
       let track = tracks[currentTrackIndex];
       let streamUrl = `/stream/${track.id}`;
+      
+      // 트랙 정보 가져오기
       fetchTrackTitle(track.id).then(fetchedTitle => {
         if (fetchedTitle) {
           title = fetchedTitle.title;
@@ -124,9 +126,13 @@
       player = new Howl({
         src: [streamUrl],
         format: ['mp3'],
-        html5: false,
-        autoplay: true,
+        html5: true,  // 모바일 호환성을 위해 true로 변경
+        autoplay: false,  // 자동 재생 비활성화
         volume: 1.0,
+        onload: function() {
+          // 오디오가 로드되면 재생 시도
+          player.play();
+        },
         onplay: function () {
           document.getElementById("loading").classList.add("hidden");
         },
@@ -137,10 +143,14 @@
         onloaderror: function (id, err) {
           console.error("Load Error:", err);
           document.getElementById("loading").classList.add("hidden");
+          // 에러 발생 시 다음 트랙으로 넘어가기
+          nextTrack();
         },
         onplayerror: function (id, err) {
           console.error("Play Error:", err);
           document.getElementById("loading").classList.add("hidden");
+          // 재생 에러 발생 시 다음 트랙으로 넘어가기
+          nextTrack();
         }
       });
     }
