@@ -53,6 +53,26 @@
   <div id="nowPlaying" class="text-center text-xl glitch"></div>
   <div id="loading" class="hidden animate-pulse text-lg text-cyan-400 mb-6 glitch">LOADING...</div>
   <script>
+    // 모바일 오디오 정책 우회: 유저 첫 터치 시 AudioContext 활성화
+    document.addEventListener('touchstart', function () {
+      if (Howler.ctx && Howler.state !== 'running') {
+        Howler.ctx.resume().then(() => {
+          console.log('AudioContext resumed for mobile autoplay.');
+        }).catch(e => {
+          console.warn('AudioContext resume failed:', e);
+        });
+      }
+    }, { once: true });
+  </script>
+  <script>
+
+  document.addEventListener('touchstart', function () {
+      if (Howler.ctx && Howler.state !== 'running') {
+        Howler.ctx.resume().then(() => {
+          console.log('Howler audio context resumed (mobile unlock)');
+        });
+      }
+    }, { once: true });
     let tracks = [];
     let currentTrackIndex = 0;
     let player = null;
