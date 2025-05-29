@@ -146,14 +146,14 @@
       player = new Howl({
         src: [streamUrl],
         format: ['mp3'],
-        html5: true,  // 모바일 호환성을 위해 true로 변경
-        autoplay: false,  // 자동 재생 비활성화
+        html5: true,
+        autoplay: true,
         volume: 1.0,
         onload: function() {
-          // 오디오가 로드되면 재생 시도
-          player.play();
+          console.log("Track loaded successfully");
         },
         onplay: function () {
+          console.log("Track started playing");
           document.getElementById("loading").classList.add("hidden");
         },
         onend: function () {
@@ -162,15 +162,21 @@
         },
         onloaderror: function (id, err) {
           console.error("Load Error:", err);
-          document.getElementById("loading").classList.add("hidden");
-          // 에러 발생 시 다음 트랙으로 넘어가기
-          nextTrack();
+          // 에러 발생 시 3초 후에 다시 시도
+          setTimeout(() => {
+            console.log("Retrying to play the track...");
+            player.load();
+            player.play();
+          }, 3000);
         },
         onplayerror: function (id, err) {
           console.error("Play Error:", err);
-          document.getElementById("loading").classList.add("hidden");
-          // 재생 에러 발생 시 다음 트랙으로 넘어가기
-          nextTrack();
+          // 재생 에러 발생 시 3초 후에 다시 시도
+          setTimeout(() => {
+            console.log("Retrying to play the track...");
+            player.load();
+            player.play();
+          }, 3000);
         }
       });
     }
