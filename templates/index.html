@@ -163,57 +163,94 @@
         player.stop();
       }
 
-      // 오디오 컨텍스트 생성 시도
+      // 오디오 컨텍스트 생성 및 상태 확인
       try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioContext = new AudioContext();
-        logError("AudioContext created successfully");
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
       } catch (e) {
-        logError(`AudioContext creation failed: ${e.message}`);
+        logError(`AudioContext error: ${e.message}`);
       }
 
-      player = new Howl({
-        src: [streamUrl],
-        format: ['mp3'],
-        html5: true,
-        autoplay: true,
-        volume: 1.0,
-        onload: function() {
-          logError("Track loaded successfully");
-        },
-        onplay: function () {
-          logError("Track started playing");
-          document.getElementById("loading").classList.add("hidden");
-        },
-        onend: function () {
-          logError(`Track finished: ${track.title}`);
-          nextTrack();
-        },
-        onloaderror: function (id, err) {
-          logError(`Load Error: ${err}`);
-          // 에러 발생 시 사용자에게 알림
-          document.getElementById("nowPlaying").innerText = "재생 중 문제가 발생했습니다. 다시 시도합니다...";
-          
-          // 3초 후 재시도
-          setTimeout(() => {
-            logError("Retrying to play the track...");
-            player.load();
-            player.play();
-          }, 3000);
-        },
-        onplayerror: function (id, err) {
-          logError(`Play Error: ${err}`);
-          // 에러 발생 시 사용자에게 알림
-          document.getElementById("nowPlaying").innerText = "재생 중 문제가 발생했습니다. 다시 시도합니다...";
-          
-          // 3초 후 재시도
-          setTimeout(() => {
-            logError("Retrying to play the track...");
-            player.load();
-            player.play();
-          }, 3000);
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      function createPlayer() {
+        return new Howl({
+          src: [streamUrl],
+          format: ['mp3'],
+          html5: true,
+          autoplay: true,
+          volume: 1.0,
+          onload: function() {
+            logError("Track loaded successfully");
+            retryCount = 0; // 성공하면 재시도 카운트 초기화
+          },
+          onplay: function () {
+            logError("Track started playing");
+            document.getElementById("loading").classList.add("hidden");
+          },
+          onend: function () {
+            logError(`Track finished: ${track.title}`);
+            nextTrack();
+          },
+          onloaderror: function (id, err) {
+            logError(`Load Error: ${err}`);
+            
+            if (retryCount < maxRetries) {
+              retryCount++;
+              logError(`Retry attempt ${retryCount} of ${maxRetries}`);
+              
+              // 지수 백오프 방식으로 재시도 (1초, 2초, 4초)
+              const delay = Math.pow(2, retryCount - 1) * 1000;
+              
+              setTimeout(() => {
+                logError(`Retrying after ${delay}ms delay...`);
+                player.unload();
+                player = createPlayer();
+              }, delay);
+            } else {
+              logError("Max retries reached, moving to next track");
+              document.getElementById("loading").classList.add("hidden");
+              nextTrack();
+            }
+          },
+          onplayerror: function (id, err) {
+            logError(`Play Error: ${err}`);
+            
+            if (retryCount < maxRetries) {
+              retryCount++;
+              logError(`Retry attempt ${retryCount} of ${maxRetries}`);
+              
+              const delay = Math.pow(2, retryCount - 1) * 1000;
+              
+              setTimeout(() => {
+                logError(`Retrying after ${delay}ms delay...`);
+                player.unload();
+                player = createPlayer();
+              }, delay);
+            } else {
+              logError("Max retries reached, moving to next track");
+              document.getElementById("loading").classList.add("hidden");
+              nextTrack();
+            }
+          }
+        });
+      }
+
+      player = createPlayer();
+
+      // 사용자 상호작용이 필요한 경우를 위한 이벤트 리스너
+      document.addEventListener('click', function initAudio() {
+        if (player && player.state() === 'unloaded') {
+          logError("Attempting to play after user interaction");
+          player.load();
+          player.play();
         }
-      });
+        document.removeEventListener('click', initAudio);
+      }, { once: true });
     }
 
     function nextTrack() {
@@ -235,6 +272,30 @@
     // 페이지 로드 시 로그 초기화
     window.addEventListener('load', () => {
       localStorage.setItem('audioLogs', '[]');
+    });
+
+    // 페이지 가시성 변경 감지
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && player) {
+        logError("Page became visible, attempting to resume playback");
+        if (player.state() === 'unloaded') {
+          player.load();
+        }
+        player.play();
+      }
+    });
+
+    // 네트워크 상태 모니터링
+    window.addEventListener('online', () => {
+      logError("Network connection restored");
+      if (player && player.state() === 'unloaded') {
+        player.load();
+        player.play();
+      }
+    });
+
+    window.addEventListener('offline', () => {
+      logError("Network connection lost");
     });
   </script>
 </body>

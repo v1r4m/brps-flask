@@ -144,7 +144,15 @@ def stream_track(track_id):
             for chunk in ts_response.iter_content(chunk_size=4096):
                 yield chunk
 
-    return Response(stream_with_context(generate()), content_type="video/MP2T")  # TS 파일의 MIME 타입
+    return Response(
+        stream_with_context(generate()),
+        content_type="video/MP2T",
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Transfer-Encoding': 'chunked'
+        }
+    )
 
 
 if __name__ == '__main__':
