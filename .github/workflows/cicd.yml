@@ -78,18 +78,18 @@ jobs:
            '(.containerDefinitions[] | select(.name == $NAME) | .image) |= $IMAGE' \
            task-def.json > new-task-def.json
 
+    - name: Render new ECS task definition
+      id: render-task
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-def.json
+        container-name: ${{ env.container_name }}
+        image: ${{ env.ecr_url }}:${{ env.tag }}
+
     - name: Register new task definition
       id: register-task
       run: |
-        TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json | jq -r '.taskDefinition.taskDefinitionArn')
-        echo "Registered: $TASK_DEF_ARN"
+        TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://$GITHUB_WORKSPACE/${{ steps.render-task.outputs.task-definition }} | jq -r '.taskDefinition.taskDefinitionArn')
         echo "task_def_arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
-
-    - name: Update ECS Service
-      run: |
-        aws ecs update-service \
-          --cluster $ecs_cluster \
-          --service $ecs_service \
-          --task-definition ${{ steps.register-task.outputs.task_def_arn }}
 
 
