@@ -12,6 +12,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      id-token: write
+      contents: read
 
     env: 
       ecr_url: ${{ vars.ECR_URL }}
