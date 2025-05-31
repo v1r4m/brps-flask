@@ -5,6 +5,19 @@ on:
     branches:
       - main  # main 브랜치에 push될 때만 실행
 
+env:
+  ecr_url: ${{ vars.ECR_URL }}
+  role_arn: ${{ vars.ROLE_ARN }}
+  aws_region: ${{ vars.AWS_REGION }}
+  tag: latest
+  ecs_service: ${{ vars.ECS_SERVICE }}
+  ecs_cluster: ${{ vars.ECS_CLUSTER }}
+  task_definition_family: ${{ vars.TASK_DEFINITION_FAMILY }}
+  container_name: ${{ vars.CONTAINER_NAME }}
+
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -13,48 +26,43 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
+    - name: Assume IAM Role (OIDC)
       uses: aws-actions/configure-aws-credentials@v2
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        role-to-assume: ${{ env.role_arn }}
+        aws-region: ${{ env.aws_region }}
 
     - name: Log in to Amazon ECR
-      id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build, tag, and push image to Amazon ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
-        IMAGE_TAG: ${{ github.sha }}
+    - name: Build and Push Docker Image to ECR
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker build -t ${{ env.ecr_url }}:${{ env.tag }} .
+        docker push ${{ env.ecr_url }}:${{ env.tag }}
 
-    - name: Download ECS Task Definition
+    - name: Fetch current task definition
       run: |
-        aws ecs describe-task-definition --task-definition ${{ secrets.ECS_TASK_DEFINITION }} \
-          --query taskDefinition > task-def.json
+        aws ecs describe-task-definition \
+          --task-definition ${{ env.task_definition_family }} \
+          --query taskDefinition \
+          > task-def.json
 
-    - name: Update Task Definition with new image
+    - name: Update task definition with new image
       run: |
-        export IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}
-        jq --arg IMAGE "$IMAGE_URI" \
-           --arg NAME "${{ secrets.CONTAINER_NAME }}" \
+        jq --arg IMAGE "${{ env.ecr_url }}:${{ env.tag }}" \
+           --arg NAME "${{ env.container_name }}" \
            '(.containerDefinitions[] | select(.name == $NAME) | .image) |= $IMAGE' \
            task-def.json > new-task-def.json
 
-    - name: Register new Task Definition
-      id: register-task-def
+    - name: Register new task definition
+      id: register-task
       run: |
-        NEW_TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json | jq -r '.taskDefinition.taskDefinitionArn')
-        echo "TASK_DEF_ARN=$NEW_TASK_DEF_ARN" >> $GITHUB_ENV
+        TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json | jq -r '.taskDefinition.taskDefinitionArn')
+        echo "task_def_arn=$TASK_DEF_ARN" >> $GITHUB_ENV
 
-    - name: Deploy ECS Service
+    - name: Update ECS Service
       run: |
         aws ecs update-service \
-          --cluster ${{ secrets.ECS_CLUSTER }} \
-          --service ${{ secrets.ECS_SERVICE }} \
-          --task-definition $TASK_DEF_ARN
+          --cluster ${{ env.ecs_cluster }} \
+          --service ${{ env.ecs_service }} \
+          --task-definition ${{ env.task_def_arn }}
