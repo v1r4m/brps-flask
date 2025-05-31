@@ -38,13 +38,20 @@ jobs:
         echo "Task Definition Family: $task_definition_family"
         echo "Container Name: $container_name"
 
-
-
     - name: Assume IAM Role (OIDC)
       uses: aws-actions/configure-aws-credentials@v2
       with:
         role-to-assume: ${{ env.role_arn }}
+        role-session-name: github-actions-session
         aws-region: ${{ env.aws_region }}
+
+    - name: Check OIDC Token
+      run: |
+        curl -sLS $ACTIONS_ID_TOKEN_REQUEST_URL \
+          -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" | jq
+      env:
+        ACTIONS_ID_TOKEN_REQUEST_URL: ${{ steps.id-token.outputs.id-token-url }}
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ steps.id-token.outputs.id-token-token }}
 
     - name: Log in to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v1
