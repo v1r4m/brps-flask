@@ -72,14 +72,16 @@ jobs:
 
         jq '{
           family,
-          taskRoleArn,
-          executionRoleArn,
           networkMode,
           containerDefinitions,
           requiresCompatibilities,
           cpu,
           memory
-        }' raw-task-def.json > task-def.json
+        }
+        + (if .taskRoleArn != null then {taskRoleArn} else {} end)
+        + (if .executionRoleArn != null then {executionRoleArn} else {} end)' \
+        raw-task-def.json > task-def.json
+
 
     - name: Add new image + cloudflared
       run: |
