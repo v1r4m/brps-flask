@@ -82,7 +82,8 @@ jobs:
       id: register-task
       run: |
         TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json | jq -r '.taskDefinition.taskDefinitionArn')
-        echo "::set-output name=task_def_arn::$TASK_DEF_ARN"
+        echo "Registered: $TASK_DEF_ARN"
+        echo "task_def_arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
 
     - name: Update ECS Service
       run: |
@@ -90,4 +91,5 @@ jobs:
           --cluster $ecs_cluster \
           --service $ecs_service \
           --task-definition ${{ steps.register-task.outputs.task_def_arn }}
+
 
