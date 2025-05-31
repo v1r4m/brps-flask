@@ -63,7 +63,25 @@ jobs:
           --query taskDefinition \
           > task-def.json
 
-    - name: Update task definition with app + cloudflared container
+    - name: Fetch and clean task definition
+      run: |
+        aws ecs describe-task-definition \
+          --task-definition ${{ env.task_definition_family }} \
+          --query taskDefinition \
+          > raw-task-def.json
+
+        jq '{
+          family,
+          taskRoleArn,
+          executionRoleArn,
+          networkMode,
+          containerDefinitions,
+          requiresCompatibilities,
+          cpu,
+          memory
+        }' raw-task-def.json > task-def.json
+
+    - name: Add new image + cloudflared
       run: |
         jq --arg IMAGE "${{ env.ecr_url }}:${{ env.tag }}" \
            --arg NAME "${{ env.container_name }}" \
