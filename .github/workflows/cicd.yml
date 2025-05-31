@@ -3,7 +3,7 @@ name: Deploy to AWS ECS
 on:
   push:
     branches:
-      - main  # main 브랜치에 push될 때만 실행
+      - main
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
     - name: Checkout source
       uses: actions/checkout@v3
 
-    - name: print env
+    - name: Print env
       run: |
         echo "ECR URL: $ecr_url"
         echo "Role ARN: $role_arn"
@@ -48,14 +48,6 @@ jobs:
         role-session-name: github-actions-session
         aws-region: ${{ env.aws_region }}
 
-    - name: Check OIDC Token
-      run: |
-        curl -sLS $ACTIONS_ID_TOKEN_REQUEST_URL \
-          -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" | jq
-      env:
-        ACTIONS_ID_TOKEN_REQUEST_URL: ${{ steps.id-token.outputs.id-token-url }}
-        ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ steps.id-token.outputs.id-token-token }}
-
     - name: Log in to Amazon ECR
       uses: aws-actions/amazon-ecr-login@v1
 
@@ -71,41 +63,30 @@ jobs:
           --query taskDefinition \
           > task-def.json
 
-    - name: Update task definition with new image
+    - name: Update task definition with app + cloudflared container
       run: |
         jq --arg IMAGE "${{ env.ecr_url }}:${{ env.tag }}" \
            --arg NAME "${{ env.container_name }}" \
-           '(.containerDefinitions[] | select(.name == $NAME) | .image) |= $IMAGE' \
+           --arg CLOUDFLARED_IMAGE "cloudflare/cloudflared:latest" \
+           --arg CLOUDFLARED_TOKEN "${{ secrets.CLOUDFLARED_TOKEN }}" \
+           '(.containerDefinitions[] | select(.name == $NAME) | .image) |= $IMAGE |
+             .containerDefinitions += [{
+               "name": "cloudflared",
+               "image": $CLOUDFLARED_IMAGE,
+               "essential": false,
+               "command": ["tunnel", "--no-autoupdate", "run", "--token", $CLOUDFLARED_TOKEN]
+             }]' \
            task-def.json > new-task-def.json
-
-    - name: Update task definition with new image + cloudflared
-      run: |
-        jq --arg IMAGE "${{ env.ecr_url }}:${{ env.tag }}" \
-          --arg NAME "${{ env.container_name }}" \
-          --arg CLOUDFLARED_IMAGE "cloudflare/cloudflared:latest" \
-          --arg CLOUDFLARED_TOKEN "${{ secrets.CLOUDFLARED_TOKEN }}" \
-          '(.containerDefinitions[] | select(.name == $NAME) | .image) |= $IMAGE |
-            .containerDefinitions += [{
-              "name": "cloudflared",
-              "image": $CLOUDFLARED_IMAGE,
-              "essential": false,
-              "command": ["tunnel", "--no-autoupdate", "run", "--token", $CLOUDFLARED_TOKEN]
-            }]' \
-          task-def.json > new-task-def.json
-
-
-    - name: Render new ECS task definition
-      id: render-task
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: new-task-def.json
-        container-name: ${{ env.container_name }}
-        image: ${{ env.ecr_url }}:${{ env.tag }}
 
     - name: Register new task definition
       id: register-task
       run: |
-        TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://$GITHUB_WORKSPACE/${{ steps.render-task.outputs.task-definition }} | jq -r '.taskDefinition.taskDefinitionArn')
+        TASK_DEF_ARN=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json | jq -r '.taskDefinition.taskDefinitionArn')
         echo "task_def_arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
 
-
+    - name: Update ECS Service
+      run: |
+        aws ecs update-service \
+          --cluster $ecs_cluster \
+          --service $ecs_service \
+          --task-definition ${{ steps.register-task.outputs.task_def_arn }}
