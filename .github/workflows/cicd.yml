@@ -5,22 +5,22 @@ on:
     branches:
       - main  # main 브랜치에 push될 때만 실행
 
-env:
-  ecr_url: ${{ vars.ECR_URL }}
-  role_arn: ${{ vars.ROLE_ARN }}
-  aws_region: ${{ vars.AWS_REGION }}
-  tag: latest
-  ecs_service: ${{ vars.ECS_SERVICE }}
-  ecs_cluster: ${{ vars.ECS_CLUSTER }}
-  task_definition_family: ${{ vars.TASK_DEFINITION_FAMILY }}
-  container_name: ${{ vars.CONTAINER_NAME }}
-
 permissions:
   contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    env: 
+      ecr_url: ${{ vars.ECR_URL }}
+      role_arn: ${{ vars.ROLE_ARN }}
+      aws_region: ${{ vars.AWS_REGION }}
+      tag: latest
+      ecs_service: ${{ vars.ECS_SERVICE }}
+      ecs_cluster: ${{ vars.ECS_CLUSTER }}
+      task_definition_family: ${{ vars.TASK_DEFINITION_FAMILY }}
+      container_name: ${{ vars.CONTAINER_NAME }}
 
     steps:
     - name: Checkout source
