@@ -17,14 +17,14 @@ jobs:
       contents: read
 
     env: 
-      ecr_url: ${{ vars.ECR_URL }}
-      role_arn: ${{ vars.ROLE_ARN }}
-      aws_region: ${{ vars.AWS_REGION }}
+      ecr_url: ${{ secrets.ECR_URL }}
+      role_arn: ${{ secrets.ROLE_ARN }}
+      aws_region: ${{ secrets.AWS_REGION }}
       tag: latest
-      ecs_service: ${{ vars.ECS_SERVICE }}
-      ecs_cluster: ${{ vars.ECS_CLUSTER }}
-      task_definition_family: ${{ vars.TASK_DEFINITION_FAMILY }}
-      container_name: ${{ vars.CONTAINER_NAME }}
+      ecs_service: ${{ secrets.ECS_SERVICE }}
+      ecs_cluster: ${{ secrets.ECS_CLUSTER }}
+      task_definition_family: ${{ secrets.TASK_DEFINITION_FAMILY }}
+      container_name: ${{ secrets.CONTAINER_NAME }}
 
     steps:
     - name: Checkout source
