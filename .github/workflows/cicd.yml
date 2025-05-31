@@ -28,14 +28,15 @@ jobs:
 
     - name: print env
       run: |
-        echo "ECR URL: ${{ env.ecr_url }}"
-        echo "Role ARN: ${{ env.role_arn }}"
-        echo "AWS Region: ${{ env.aws_region }}"
-        echo "Tag: ${{ env.tag }}"
-        echo "ECS Service: ${{ env.ecs_service }}"
-        echo "ECS Cluster: ${{ env.ecs_cluster }}"
-        echo "Task Definition Family: ${{ env.task_definition_family }}"
-        echo "Container Name: ${{ env.container_name }}"
+        echo "ECR URL: $ecr_url"
+        echo "Role ARN: $role_arn"
+        echo "AWS Region: $aws_region"
+        echo "Tag: $tag"
+        echo "ECS Service: $ecs_service"
+        echo "ECS Cluster: $ecs_cluster"
+        echo "Task Definition Family: $task_definition_family"
+        echo "Container Name: $container_name"
+
 
 
     - name: Assume IAM Role (OIDC)
