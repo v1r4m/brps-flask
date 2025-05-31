@@ -78,6 +78,22 @@ jobs:
            '(.containerDefinitions[] | select(.name == $NAME) | .image) |= $IMAGE' \
            task-def.json > new-task-def.json
 
+    - name: Update task definition with new image + cloudflared
+      run: |
+        jq --arg IMAGE "${{ env.ecr_url }}:${{ env.tag }}" \
+          --arg NAME "${{ env.container_name }}" \
+          --arg CLOUDFLARED_IMAGE "cloudflare/cloudflared:latest" \
+          --arg CLOUDFLARED_TOKEN "${{ secrets.CLOUDFLARED_TOKEN }}" \
+          '(.containerDefinitions[] | select(.name == $NAME) | .image) |= $IMAGE |
+            .containerDefinitions += [{
+              "name": "cloudflared",
+              "image": $CLOUDFLARED_IMAGE,
+              "essential": false,
+              "command": ["tunnel", "--no-autoupdate", "run", "--token", $CLOUDFLARED_TOKEN]
+            }]' \
+          task-def.json > new-task-def.json
+
+
     - name: Render new ECS task definition
       id: render-task
       uses: aws-actions/amazon-ecs-render-task-definition@v1
