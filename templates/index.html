@@ -81,6 +81,7 @@
     let currentTrackIndex = 0;
     let player = null;
     let playlistLoaded = false;
+    let isLoading = false;  // 로딩 중 플래그 추가
 
     async function fetchTracks() {
       const playlistId = "{{ playlist_id }}"; 
@@ -88,14 +89,16 @@
       const response = await fetch(`/playlist/${playlistId}`);
       tracks = await response.json();
       playlistLoaded = true;
+      isLoading = false;  // 로딩 완료
       document.getElementById("loading").classList.add("hidden");
       console.log("Fetched Tracks:", tracks);
     }
 
     function handlePlayClick() {
-      if (!playlistLoaded) {
+      if (!playlistLoaded && !isLoading) {
+            isLoading = true;  // 로딩 시작
             initPlayer();  // 플레이리스트가 아직 로드되지 않았다면 클릭 시 플레이리스트 로딩
-        } else {
+        } else if (playlistLoaded) {
             playTrack();  // 이미 로드된 플레이리스트가 있다면 바로 재생
         }
 
@@ -180,7 +183,7 @@
       function createPlayer() {
         return new Howl({
           src: [streamUrl],
-          format: ['ogg'],
+          format: ['mp3', 'mpeg'],
           html5: true,
           autoplay: true,
           volume: 1.0,
