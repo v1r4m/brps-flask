@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, jsonify, request, render_template, Response, stream_with_context
+from flask import Flask, jsonify, request, render_template, Response, stream_with_context, send_from_directory
 import requests
 import os
 import random
@@ -14,7 +14,7 @@ PLAYLIST_ID = os.getenv("PLAYLIST_ID")
 CLIENT_ID = os.getenv("CLIENT_ID")
 AUTH = os.getenv("AUTH")
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder="templates", static_folder="static")
 
 def get_shuffled_tracks(playlist_id):
     """ SoundCloud V2 API를 사용해 플레이리스트 트랙 정보 가져오기 """
@@ -40,6 +40,10 @@ def get_shuffled_tracks(playlist_id):
 
     random.shuffle(tracks)
     return tracks
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.route('/')
 def home():
