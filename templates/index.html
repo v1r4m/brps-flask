@@ -281,18 +281,23 @@
     // 페이지 가시성 변경 감지
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && player) {
-        logError("Page became visible, attempting to resume playback");
-        if (player.state() === 'unloaded') {
-          player.load();
+        logError("Page became visible");
+        // 이미 재생 중이면 play() 호출하지 않음 (루프 방지)
+        if (!player.playing()) {
+          logError("Player was paused, attempting to resume");
+          if (player.state() === 'unloaded') {
+            player.load();
+          }
+          player.play();
         }
-        player.play();
       }
     });
 
     // 네트워크 상태 모니터링
     window.addEventListener('online', () => {
       logError("Network connection restored");
-      if (player && player.state() === 'unloaded') {
+      // 이미 재생 중이면 play() 호출하지 않음 (루프 방지)
+      if (player && !player.playing() && player.state() === 'unloaded') {
         player.load();
         player.play();
       }
