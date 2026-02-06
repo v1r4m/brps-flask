@@ -151,12 +151,17 @@ def stream_track(track_id):
 
     print(f"✅ 스트리밍 URL: {stream_url[:100]}...")
     
-    # Progressive 포맷인 경우 직접 리다이렉트
+    # Progressive 포맷인 경우 직접 스트리밍 (Content-Length 포함)
     if selected_transcoding.get('format', {}).get('protocol') == 'progressive':
-        print(f"🎵 Progressive 스트리밍으로 리다이렉트")
+        print(f"🎵 Progressive 스트리밍")
+        upstream = requests.get(stream_url, headers=headers, stream=True)
+        resp_headers = {'Content-Type': 'audio/mpeg'}
+        if 'Content-Length' in upstream.headers:
+            resp_headers['Content-Length'] = upstream.headers['Content-Length']
+            resp_headers['Accept-Ranges'] = 'none'
         return Response(
-            requests.get(stream_url, headers=headers, stream=True).iter_content(chunk_size=4096),
-            content_type="audio/mpeg"
+            upstream.iter_content(chunk_size=4096),
+            headers=resp_headers
         )
     
     # HLS 포맷인 경우 ffmpeg로 MP3 변환

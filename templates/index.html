@@ -167,12 +167,10 @@
         player.stop();
       }
 
-      // 오디오 컨텍스트 생성 및 상태 확인
+      // Howler의 글로벌 AudioContext가 suspended 상태면 resume
       try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const audioContext = new AudioContext();
-        if (audioContext.state === 'suspended') {
-          audioContext.resume();
+        if (Howler.ctx && Howler.ctx.state === 'suspended') {
+          Howler.ctx.resume();
         }
       } catch (e) {
         logError(`AudioContext error: ${e.message}`);
@@ -246,15 +244,6 @@
 
       player = createPlayer();
 
-      // 사용자 상호작용이 필요한 경우를 위한 이벤트 리스너
-      document.addEventListener('click', function initAudio() {
-        if (player && player.state() === 'unloaded') {
-          logError("Attempting to play after user interaction");
-          player.load();
-          player.play();
-        }
-        document.removeEventListener('click', initAudio);
-      }, { once: true });
     }
 
     function nextTrack() {
@@ -282,13 +271,23 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && player) {
         logError("Page became visible");
-        // 이미 재생 중이면 play() 호출하지 않음 (루프 방지)
         if (!player.playing()) {
           logError("Player was paused, attempting to resume");
           if (player.state() === 'unloaded') {
-            player.load();
+            // unloaded 상태면 다음 트랙으로 넘어감 (현재 위치 복원 불가)
+            logError("Player was unloaded, moving to next track");
+            nextTrack();
+          } else {
+            // 현재 재생 위치를 보존하며 재개
+            const seekPos = player.seek();
+            logError(`Resuming from position: ${seekPos}`);
+            if (typeof seekPos === 'number' && seekPos > 0) {
+              player.play();
+            } else {
+              // seek 위치를 알 수 없으면 그냥 재개 (처음부터 재생 방지)
+              player.play();
+            }
           }
-          player.play();
         }
       }
     });
